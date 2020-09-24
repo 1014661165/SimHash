@@ -6,7 +6,7 @@ var (
 	zero uint64
 	one uint64
 	polynomials [][]uint64
-	Std64 *FPGenerator
+	std64 *FPGenerator
 )
 
 func init(){
@@ -78,30 +78,30 @@ func init(){
 		{ 0xECFC86D765EABBEE, 0x9190E1C46CC13702 },
 		{ 0xE1F8D6B3195D6D97, 0xDF70267FF5E4C979 },
 		{ 0xD74307D3FD3382DB, 0x9999B3FFDC769B48 }}
-	Std64 = Make(polynomials[64][0], 64)
+	std64 = Make(polynomials[64][0], 64)
 }
 
 
 type FPGenerator struct {
-	Empty uint64
-	Degree int
-	Polynomial uint64
-	ByteModTable [16][256]uint64
+	empty uint64
+	degree int
+	polynomial uint64
+	byteModTable [16][256]uint64
 }
 
 func Make(polynomial uint64, degree int) *FPGenerator{
 	fpgen, ok := generators[polynomial]
 	if !ok{
 		ins := FPGenerator{}
-		ins.Init(polynomial, degree)
+		ins.init(polynomial, degree)
 		fpgen = &ins
 		generators[polynomial] = fpgen
 	}
 	return fpgen
 }
 
-func (ins *FPGenerator) Reduce(fp uint64) uint64{
-	N := 8 - ins.Degree / 8
+func (ins *FPGenerator) reduce(fp uint64) uint64{
+	N := 8 - ins.degree / 8
 	var local uint64
 	if N == 8 {
 		local = 0
@@ -110,34 +110,34 @@ func (ins *FPGenerator) Reduce(fp uint64) uint64{
 	}
 	temp := zero
 	for i:=0; i<N; i++ {
-		temp ^= ins.ByteModTable[8 + i][fp & 0xff]
+		temp ^= ins.byteModTable[8 + i][fp & 0xff]
 		fp = fp >> 8
 	}
 	return local ^ temp
 }
 
-func (ins *FPGenerator) ExtendByte(f uint64, v int) uint64{
+func (ins *FPGenerator) extendByte(f uint64, v int) uint64{
 	f ^= uint64(0xff & v)
 	i := int(f)
 	result := f >> 8
-	result ^= ins.ByteModTable[7][i & 0xff]
+	result ^= ins.byteModTable[7][i & 0xff]
 	return result
 }
 
-func (ins *FPGenerator) Fp(buf []int8, start int, n int) uint64{
-	return ins.Extend(ins.Empty, buf, start, n)
+func (ins *FPGenerator) fp(buf []int8, start int, n int) uint64{
+	return ins.extend(ins.empty, buf, start, n)
 }
 
-func (ins *FPGenerator) Extend(f  uint64, buf []int8, start int, n int) uint64{
+func (ins *FPGenerator) extend(f  uint64, buf []int8, start int, n int) uint64{
 	for i:=0; i<n; i++ {
-		f = ins.ExtendByte(f, int(buf[start + i]))
+		f = ins.extendByte(f, int(buf[start + i]))
 	}
-	return ins.Reduce(f)
+	return ins.reduce(f)
 }
 
-func (ins *FPGenerator) Init(polynomial uint64, degree int){
-	ins.Degree = degree
-	ins.Polynomial = polynomial
+func (ins *FPGenerator) init(polynomial uint64, degree int){
+	ins.degree = degree
+	ins.polynomial = polynomial
 	var powerTable [128]uint64
 
 	x_to_the_i := one
@@ -150,7 +150,7 @@ func (ins *FPGenerator) Init(polynomial uint64, degree int){
 			x_to_the_i ^= polynomial
 		}
 	}
-	ins.Empty = powerTable[64]
+	ins.empty = powerTable[64]
 
 	for i:=0; i<16; i++ {
 		for j:=0; j<256; j++ {
@@ -160,7 +160,7 @@ func (ins *FPGenerator) Init(polynomial uint64, degree int){
 					v ^= powerTable[127 - i * 8 - k]
 				}
 			}
-			ins.ByteModTable[i][j] = v
+			ins.byteModTable[i][j] = v
 		}
 	}
 }

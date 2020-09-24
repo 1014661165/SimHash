@@ -1,17 +1,16 @@
 package simhash
 
 const (
-	HASH_SIZE int = 64
-	FIXED_BGRAM_LENGTH int = 8
-	FIXED_CGRAM_LENGTH int = 4
+	HashSize int = 64
+	FixedCGramLength int = 4
 )
 
 //计算哈希值
-func ComputeOptimizedSimHashForString(s string) uint64{
+func ComputeSimHashForString(s string) uint64{
 	shingles := LongOpenHashSet{}
-	shingles.Init2(Min(len(s), 100000))
+	shingles.init2(Min(len(s), 100000))
 	length := len(s)
-	for i := 0; i < length - FIXED_CGRAM_LENGTH + 1; i++{
+	for i := 0; i < length - FixedCGramLength + 1; i++{
 		var shingle = uint64(s[i])
 		shingle <<= 16
 		shingle |= uint64(s[i+1])
@@ -19,15 +18,15 @@ func ComputeOptimizedSimHashForString(s string) uint64{
 		shingle |= uint64(s[i+2])
 		shingle <<= 16
 		shingle |= uint64(s[i+3])
-		shingles.Add(shingle)
+		shingles.add(shingle)
 	}
 
-	var v [HASH_SIZE]int
+	var v [HashSize]int
 	longAsBytes := make([]int8, 8)
 
 	shingles.setInit()
 	for  {
-		shingle := shingles.Next()
+		shingle := shingles.next()
 		if shingle == 0{
 			break
 		}
@@ -41,8 +40,8 @@ func ComputeOptimizedSimHashForString(s string) uint64{
 		longAsBytes[6] = int8(shingle >> 8)
 		longAsBytes[7] = int8(shingle)
 
-		longHash := Std64.Fp(longAsBytes, 0, 8)
-		for i:=0; i<HASH_SIZE; i++ {
+		longHash := std64.fp(longAsBytes, 0, 8)
+		for i:=0; i<HashSize; i++ {
 			bitSet := ((longHash >> i) & 1) == 1
 			if bitSet {
 				v[i] += 1
@@ -52,7 +51,7 @@ func ComputeOptimizedSimHashForString(s string) uint64{
 		}
 	}
 	var sim uint64 = 0
-	for i:=0; i<HASH_SIZE; i++ {
+	for i:=0; i<HashSize; i++ {
 		if v[i] > 0 {
 			sim |= 1 << i
 		}

@@ -1,20 +1,18 @@
 package simhash
 
 const (
-	DEFAULT_INITIAL_SIZE int = 16
-	DEFAULT_LOAD_FACTOR float64 = 0.75
-	DEFAULT_GROWTH_FACTOR int = 16
-	FREE int8 = 0
-	OCCUPIED int8 = -1
-	REMOVED int8 = 1
+	DefaultLoadFactor float64 = 0.75
+	DefaultGrowthFactor int = 16
+	Free int8 = 0
+	Occupied int8 = -1
 )
 
 var (
-	PRIMES []int
+	Primes []int
 )
 
 func init(){
-	PRIMES = []int{ 3, 3, 3, 3, 3, 3, 3,
+	Primes = []int{ 3, 3, 3, 3, 3, 3, 3,
 		3, 3, 3, 5, 5, 5, 5, 5, 5, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 13, 13, 13,
 		13, 13, 13, 13, 13, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 31,
 		31, 31, 31, 31, 31, 31, 43, 43, 43, 43, 43, 43, 43, 43, 61, 61, 61, 61,
@@ -81,65 +79,49 @@ type LongOpenHashSet struct {
 	c int
 }
 
-func (ins *LongOpenHashSet) Init(n int, f float64){
-	ins.growthFactor = DEFAULT_GROWTH_FACTOR
+func (ins *LongOpenHashSet) init(n int, f float64){
+	ins.growthFactor = DefaultGrowthFactor
 	if f <= 0 || f > 1 {
 		panic("Load factor must be greater than 0 and smaller than or equal to 1")
 	}
 	if n < 0 {
 		panic("Hash table size must be nonnegative")
 	}
-	l := BinarySearch(PRIMES, 0, len(PRIMES),int(float64(n) / f) + 1)
+	l := BinarySearch(Primes, 0, len(Primes),int(float64(n) / f) + 1)
 	if l < 0 {
 		l = -l - 1
 	}
 	ins.p = l
-	ins.free = PRIMES[l]
+	ins.free = Primes[l]
 	ins.f = f
 	ins.maxFill = int(float64(ins.free) * f)
 	ins.key = make([]uint64, ins.free)
 	ins.state = make([]int8, ins.free)
 }
 
-func (ins *LongOpenHashSet) Init2(n int){
-	ins.Init(n, DEFAULT_LOAD_FACTOR)
+func (ins *LongOpenHashSet) init2(n int){
+	ins.init(n, DefaultLoadFactor)
 }
 
-func EnsureOffsetLength(arrayLength int, offset int, length int){
-	if offset < 0 {
-		panic("Offset is negative")
-	}
-	if length < 0 {
-		panic("Length is negative")
-	}
-	if offset + length > arrayLength {
-		panic("Last index is greater than array length")
-	}
-}
-
-func EnsureOffsetLengthOfLongArray(a []uint64, offset int, length int){
-	EnsureOffsetLength(len(a), offset, length)
-}
-
-func (ins *LongOpenHashSet) FindInsertionPoint(k uint64) int{
+func (ins *LongOpenHashSet) findInsertionPoint(k uint64) int{
 	key := ins.key
 	state := ins.state
 	n := len(key)
-	k2i := LongHash2IntHash(k) & 0x7FFFFFFF
+	k2i := longHash2IntHash(k) & 0x7FFFFFFF
 	h1 := k2i % n
-	if state[h1] == OCCUPIED && !(k == key[h1]) {
+	if state[h1] == Occupied && !(k == key[h1]) {
 		h2 := (k2i % (n - 2)) + 1
 		for {
 			h1 = (h1 + h2) % n
-			if !(state[h1] == OCCUPIED && !((k) == (key[h1]))){
+			if !(state[h1] == Occupied && !((k) == (key[h1]))){
 				break
 			}
 		}
 	}
-	if state[h1] == FREE {
+	if state[h1] == Free {
 		return h1
 	}
-	if state[h1] == OCCUPIED {
+	if state[h1] == Occupied {
 		return -h1 - 1
 	}
 	i := h1
@@ -148,69 +130,59 @@ func (ins *LongOpenHashSet) FindInsertionPoint(k uint64) int{
 		h2 := (k2i % (n - 2)) + 1
 		for {
 			h1 = (h1 + h2) % n
-			if !(state[h1] != FREE && !((k) == (key[h1]))){
+			if !(state[h1] != Free && !((k) == (key[h1]))){
 				break
 			}
 		}
 	}
-	if state[h1] == OCCUPIED {
+	if state[h1] == Occupied {
 		return -h1 - 1
 	}
 	return i
 }
 
-func (ins *LongOpenHashSet) FindKey(k uint64) int{
+func (ins *LongOpenHashSet) findKey(k uint64) int{
 	key := ins.key
 	state := ins.state
 	n := len(key)
-	k2i := LongHash2IntHash(k) & 0x7FFFFFFF
+	k2i := longHash2IntHash(k) & 0x7FFFFFFF
 	h1 := k2i % n
-	if state[h1] != FREE && !(k == key[h1]){
+	if state[h1] != Free && !(k == key[h1]){
 		h2 := (k2i % (n - 2)) + 1
 		for {
 			h1 = (h1 + h2) % n
-			if !(state[h1] != FREE && !(k == key[h1])){
+			if !(state[h1] != Free && !(k == key[h1])){
 				break
 			}
 		}
 	}
-	if state[h1] == OCCUPIED {
+	if state[h1] == Occupied {
 		return h1
 	}
 	return -1
 }
 
-func (ins *LongOpenHashSet) Add(k uint64) bool{
-	i := ins.FindInsertionPoint(k)
+func (ins *LongOpenHashSet) add(k uint64) bool{
+	i := ins.findInsertionPoint(k)
 	if i < 0 {
 		return false
 	}
-	if ins.state[i] == FREE{
+	if ins.state[i] == Free{
 		ins.free--
 	}
-	ins.state[i] = OCCUPIED
+	ins.state[i] = Occupied
 	ins.key[i] = k
 	ins.count++
 	if ins.count >= ins.maxFill {
-		newP := Min(ins.p + ins.growthFactor, len(PRIMES) - 1)
-		for PRIMES[newP] == PRIMES[ins.p]{
+		newP := Min(ins.p + ins.growthFactor, len(Primes) - 1)
+		for Primes[newP] == Primes[ins.p]{
 			newP++
 		}
-		ins.Rehash(newP)
+		ins.rehash(newP)
 	}
 	if ins.free == 0 {
-		ins.Rehash(ins.p)
+		ins.rehash(ins.p)
 	}
-	return true
-}
-
-func (ins *LongOpenHashSet) Remove(k uint64) bool{
-	i := ins.FindKey(k)
-	if i < 0 {
-		return false
-	}
-	ins.state[i] = REMOVED
-	ins.count--
 	return true
 }
 
@@ -219,26 +191,14 @@ func (ins *LongOpenHashSet) setInit(){
 	n := len(state)
 	ins.c = ins.count
 	if ins.c != 0 {
-		for ins.pos < n && state[ins.pos] != OCCUPIED{
+		for ins.pos < n && state[ins.pos] != Occupied{
 			ins.pos++
 		}
 	}
 }
 
-func (ins *LongOpenHashSet) Next() uint64{
+func (ins *LongOpenHashSet) next() uint64{
 	return ins.nextLong()
-}
-
-func (ins *LongOpenHashSet) skip(n int) int{
-	i := n
-	for {
-		if !(i != 0  && ins.hasNext()) {
-			break
-		}
-		i--
-		ins.nextLong()
-	}
-	return n - i - 1
 }
 
 func (ins *LongOpenHashSet) hasNext() bool{
@@ -258,7 +218,7 @@ func (ins *LongOpenHashSet) nextLong() uint64{
 	if ins.c != 0 {
 		for {
 			ins.pos++
-			if !(ins.pos < n && state[ins.pos] != OCCUPIED){
+			if !(ins.pos < n && state[ins.pos] != Occupied){
 				break
 			}
 		}
@@ -266,21 +226,13 @@ func (ins *LongOpenHashSet) nextLong() uint64{
 	return retVal
 }
 
-func (ins *LongOpenHashSet) setRemove(){
-	if ins.last == -1 || ins.state[ins.last] != OCCUPIED{
-		panic("Illegal State")
-	}
-	ins.state[ins.last] = REMOVED
-	ins.count--
-}
-
-func (ins *LongOpenHashSet) Rehash(newP int){
+func (ins *LongOpenHashSet) rehash(newP int){
 	i := 0
 	j := ins.count
 	var k2i, h1, h2 int
 	state := ins.state
 	var k uint64
-	newN := PRIMES[newP]
+	newN := Primes[newP]
 	key := ins.key
 	newKey := make([]uint64, newN)
 	newState := make([]int8, newN)
@@ -289,22 +241,22 @@ func (ins *LongOpenHashSet) Rehash(newP int){
 			break
 		}
 		j--
-		for state[i] != OCCUPIED{
+		for state[i] != Occupied{
 			i++
 		}
 		k = key[i]
-		k2i = LongHash2IntHash(k) & 0x7FFFFFFF
+		k2i = longHash2IntHash(k) & 0x7FFFFFFF
 		h1 = k2i % newN
-		if newState[h1] != FREE{
+		if newState[h1] != Free{
 			h2 = (k2i % (newN - 2)) + 1
 			for {
 				h1 = (h1 + h2) % newN
-				if newState[h1] == FREE{
+				if newState[h1] == Free{
 					break
 				}
 			}
 		}
-		newState[h1] = OCCUPIED
+		newState[h1] = Occupied
 		newKey[h1] = k
 		i++
 	}
@@ -315,7 +267,7 @@ func (ins *LongOpenHashSet) Rehash(newP int){
 	ins.state = newState
 }
 
-func LongHash2IntHash(l uint64) int{
+func longHash2IntHash(l uint64) int{
 	return int(l^(l >> 32))
 }
 
