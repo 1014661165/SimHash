@@ -1,18 +1,18 @@
 package simhash
 
 const (
-	DefaultLoadFactor float64 = 0.75
-	DefaultGrowthFactor int = 16
-	Free int8 = 0
-	Occupied int8 = -1
+	defaultLoadFactor float64 = 0.75
+	defaultGrowthFactor int = 16
+	free int8 = 0
+	occupied int8 = -1
 )
 
 var (
-	Primes []int
+	primes []int
 )
 
 func init(){
-	Primes = []int{ 3, 3, 3, 3, 3, 3, 3,
+	primes = []int{ 3, 3, 3, 3, 3, 3, 3,
 		3, 3, 3, 5, 5, 5, 5, 5, 5, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 13, 13, 13,
 		13, 13, 13, 13, 13, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 31,
 		31, 31, 31, 31, 31, 31, 43, 43, 43, 43, 43, 43, 43, 43, 61, 61, 61, 61,
@@ -65,7 +65,7 @@ func init(){
 		2147482951}
 }
 
-type LongOpenHashSet struct {
+type longOpenHashSet struct {
 	key []uint64
 	state []int8
 	f float64
@@ -79,49 +79,49 @@ type LongOpenHashSet struct {
 	c int
 }
 
-func (ins *LongOpenHashSet) init(n int, f float64){
-	ins.growthFactor = DefaultGrowthFactor
+func (ins *longOpenHashSet) init(n int, f float64){
+	ins.growthFactor = defaultGrowthFactor
 	if f <= 0 || f > 1 {
 		panic("Load factor must be greater than 0 and smaller than or equal to 1")
 	}
 	if n < 0 {
 		panic("Hash table size must be nonnegative")
 	}
-	l := BinarySearch(Primes, 0, len(Primes),int(float64(n) / f) + 1)
+	l := binarySearch(primes, 0, len(primes),int(float64(n) / f) + 1)
 	if l < 0 {
 		l = -l - 1
 	}
 	ins.p = l
-	ins.free = Primes[l]
+	ins.free = primes[l]
 	ins.f = f
 	ins.maxFill = int(float64(ins.free) * f)
 	ins.key = make([]uint64, ins.free)
 	ins.state = make([]int8, ins.free)
 }
 
-func (ins *LongOpenHashSet) init2(n int){
-	ins.init(n, DefaultLoadFactor)
+func (ins *longOpenHashSet) init2(n int){
+	ins.init(n, defaultLoadFactor)
 }
 
-func (ins *LongOpenHashSet) findInsertionPoint(k uint64) int{
+func (ins *longOpenHashSet) findInsertionPoint(k uint64) int{
 	key := ins.key
 	state := ins.state
 	n := len(key)
 	k2i := longHash2IntHash(k) & 0x7FFFFFFF
 	h1 := k2i % n
-	if state[h1] == Occupied && !(k == key[h1]) {
+	if state[h1] == occupied && !(k == key[h1]) {
 		h2 := (k2i % (n - 2)) + 1
 		for {
 			h1 = (h1 + h2) % n
-			if !(state[h1] == Occupied && !((k) == (key[h1]))){
+			if !(state[h1] == occupied && !((k) == (key[h1]))){
 				break
 			}
 		}
 	}
-	if state[h1] == Free {
+	if state[h1] == free {
 		return h1
 	}
-	if state[h1] == Occupied {
+	if state[h1] == occupied {
 		return -h1 - 1
 	}
 	i := h1
@@ -130,52 +130,52 @@ func (ins *LongOpenHashSet) findInsertionPoint(k uint64) int{
 		h2 := (k2i % (n - 2)) + 1
 		for {
 			h1 = (h1 + h2) % n
-			if !(state[h1] != Free && !((k) == (key[h1]))){
+			if !(state[h1] != free && !((k) == (key[h1]))){
 				break
 			}
 		}
 	}
-	if state[h1] == Occupied {
+	if state[h1] == occupied {
 		return -h1 - 1
 	}
 	return i
 }
 
-func (ins *LongOpenHashSet) findKey(k uint64) int{
+func (ins *longOpenHashSet) findKey(k uint64) int{
 	key := ins.key
 	state := ins.state
 	n := len(key)
 	k2i := longHash2IntHash(k) & 0x7FFFFFFF
 	h1 := k2i % n
-	if state[h1] != Free && !(k == key[h1]){
+	if state[h1] != free && !(k == key[h1]){
 		h2 := (k2i % (n - 2)) + 1
 		for {
 			h1 = (h1 + h2) % n
-			if !(state[h1] != Free && !(k == key[h1])){
+			if !(state[h1] != free && !(k == key[h1])){
 				break
 			}
 		}
 	}
-	if state[h1] == Occupied {
+	if state[h1] == occupied {
 		return h1
 	}
 	return -1
 }
 
-func (ins *LongOpenHashSet) add(k uint64) bool{
+func (ins *longOpenHashSet) add(k uint64) bool{
 	i := ins.findInsertionPoint(k)
 	if i < 0 {
 		return false
 	}
-	if ins.state[i] == Free{
+	if ins.state[i] == free{
 		ins.free--
 	}
-	ins.state[i] = Occupied
+	ins.state[i] = occupied
 	ins.key[i] = k
 	ins.count++
 	if ins.count >= ins.maxFill {
-		newP := Min(ins.p + ins.growthFactor, len(Primes) - 1)
-		for Primes[newP] == Primes[ins.p]{
+		newP := min(ins.p + ins.growthFactor, len(primes) - 1)
+		for primes[newP] == primes[ins.p]{
 			newP++
 		}
 		ins.rehash(newP)
@@ -186,26 +186,26 @@ func (ins *LongOpenHashSet) add(k uint64) bool{
 	return true
 }
 
-func (ins *LongOpenHashSet) setInit(){
+func (ins *longOpenHashSet) setInit(){
 	state := ins.state
 	n := len(state)
 	ins.c = ins.count
 	if ins.c != 0 {
-		for ins.pos < n && state[ins.pos] != Occupied{
+		for ins.pos < n && state[ins.pos] != occupied{
 			ins.pos++
 		}
 	}
 }
 
-func (ins *LongOpenHashSet) next() uint64{
+func (ins *longOpenHashSet) next() uint64{
 	return ins.nextLong()
 }
 
-func (ins *LongOpenHashSet) hasNext() bool{
+func (ins *longOpenHashSet) hasNext() bool{
 	return ins.c != 0 && ins.pos < len(ins.state)
 }
 
-func (ins *LongOpenHashSet) nextLong() uint64{
+func (ins *longOpenHashSet) nextLong() uint64{
 	var retVal uint64
 	state := ins.state
 	n := len(state)
@@ -218,7 +218,7 @@ func (ins *LongOpenHashSet) nextLong() uint64{
 	if ins.c != 0 {
 		for {
 			ins.pos++
-			if !(ins.pos < n && state[ins.pos] != Occupied){
+			if !(ins.pos < n && state[ins.pos] != occupied){
 				break
 			}
 		}
@@ -226,13 +226,13 @@ func (ins *LongOpenHashSet) nextLong() uint64{
 	return retVal
 }
 
-func (ins *LongOpenHashSet) rehash(newP int){
+func (ins *longOpenHashSet) rehash(newP int){
 	i := 0
 	j := ins.count
 	var k2i, h1, h2 int
 	state := ins.state
 	var k uint64
-	newN := Primes[newP]
+	newN := primes[newP]
 	key := ins.key
 	newKey := make([]uint64, newN)
 	newState := make([]int8, newN)
@@ -241,22 +241,22 @@ func (ins *LongOpenHashSet) rehash(newP int){
 			break
 		}
 		j--
-		for state[i] != Occupied{
+		for state[i] != occupied{
 			i++
 		}
 		k = key[i]
 		k2i = longHash2IntHash(k) & 0x7FFFFFFF
 		h1 = k2i % newN
-		if newState[h1] != Free{
+		if newState[h1] != free{
 			h2 = (k2i % (newN - 2)) + 1
 			for {
 				h1 = (h1 + h2) % newN
-				if newState[h1] == Free{
+				if newState[h1] == free{
 					break
 				}
 			}
 		}
-		newState[h1] = Occupied
+		newState[h1] = occupied
 		newKey[h1] = k
 		i++
 	}

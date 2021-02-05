@@ -1,7 +1,7 @@
 package simhash
 
 //二分查找
-func BinarySearch(a []int, fromIndex int, toIndex int, key int) int{
+func binarySearch(a []int, fromIndex int, toIndex int, key int) int{
 	low := fromIndex
 	high := toIndex - 1
 
@@ -20,7 +20,7 @@ func BinarySearch(a []int, fromIndex int, toIndex int, key int) int{
 	return -(low + 1)
 }
 
-func Min(a,b int) int{
+func min(a,b int) int{
 	if a <= b {
 		return a
 	}

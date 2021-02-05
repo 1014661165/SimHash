@@ -2,15 +2,15 @@ package simhash
 
 
 var (
-	generators map[uint64]*FPGenerator
+	generators map[uint64]*fpGenerator
 	zero uint64
 	one uint64
 	polynomials [][]uint64
-	std64 *FPGenerator
+	std64 *fpGenerator
 )
 
 func init(){
-	generators = make(map[uint64]*FPGenerator)
+	generators = make(map[uint64]*fpGenerator)
 	zero = 0
 	one = 0x8000000000000000
 	polynomials = [][]uint64{ nil,
@@ -78,21 +78,21 @@ func init(){
 		{ 0xECFC86D765EABBEE, 0x9190E1C46CC13702 },
 		{ 0xE1F8D6B3195D6D97, 0xDF70267FF5E4C979 },
 		{ 0xD74307D3FD3382DB, 0x9999B3FFDC769B48 }}
-	std64 = Make(polynomials[64][0], 64)
+	std64 = makeFPGenerator(polynomials[64][0], 64)
 }
 
 
-type FPGenerator struct {
+type fpGenerator struct {
 	empty uint64
 	degree int
 	polynomial uint64
 	byteModTable [16][256]uint64
 }
 
-func Make(polynomial uint64, degree int) *FPGenerator{
+func makeFPGenerator(polynomial uint64, degree int) *fpGenerator{
 	fpgen, ok := generators[polynomial]
 	if !ok{
-		ins := FPGenerator{}
+		ins := fpGenerator{}
 		ins.init(polynomial, degree)
 		fpgen = &ins
 		generators[polynomial] = fpgen
@@ -100,7 +100,7 @@ func Make(polynomial uint64, degree int) *FPGenerator{
 	return fpgen
 }
 
-func (ins *FPGenerator) reduce(fp uint64) uint64{
+func (ins *fpGenerator) reduce(fp uint64) uint64{
 	N := 8 - ins.degree / 8
 	var local uint64
 	if N == 8 {
@@ -116,7 +116,7 @@ func (ins *FPGenerator) reduce(fp uint64) uint64{
 	return local ^ temp
 }
 
-func (ins *FPGenerator) extendByte(f uint64, v int) uint64{
+func (ins *fpGenerator) extendByte(f uint64, v int) uint64{
 	f ^= uint64(0xff & v)
 	i := int(f)
 	result := f >> 8
@@ -124,18 +124,18 @@ func (ins *FPGenerator) extendByte(f uint64, v int) uint64{
 	return result
 }
 
-func (ins *FPGenerator) fp(buf []int8, start int, n int) uint64{
+func (ins *fpGenerator) fp(buf []int8, start int, n int) uint64{
 	return ins.extend(ins.empty, buf, start, n)
 }
 
-func (ins *FPGenerator) extend(f  uint64, buf []int8, start int, n int) uint64{
+func (ins *fpGenerator) extend(f  uint64, buf []int8, start int, n int) uint64{
 	for i:=0; i<n; i++ {
 		f = ins.extendByte(f, int(buf[start + i]))
 	}
 	return ins.reduce(f)
 }
 
-func (ins *FPGenerator) init(polynomial uint64, degree int){
+func (ins *fpGenerator) init(polynomial uint64, degree int){
 	ins.degree = degree
 	ins.polynomial = polynomial
 	var powerTable [128]uint64

@@ -1,16 +1,16 @@
 package simhash
 
 const (
-	HashSize int = 64
-	FixedCGramLength int = 4
+	hashSize int = 64
+	fixedCGramLength int = 4
 )
 
 //计算哈希值
 func ComputeSimHashForString(s string) uint64{
-	shingles := LongOpenHashSet{}
-	shingles.init2(Min(len(s), 100000))
+	shingles := longOpenHashSet{}
+	shingles.init2(min(len(s), 100000))
 	length := len(s)
-	for i := 0; i < length - FixedCGramLength + 1; i++{
+	for i := 0; i < length - fixedCGramLength + 1; i++{
 		var shingle = uint64(s[i])
 		shingle <<= 16
 		shingle |= uint64(s[i+1])
@@ -21,7 +21,7 @@ func ComputeSimHashForString(s string) uint64{
 		shingles.add(shingle)
 	}
 
-	var v [HashSize]int
+	var v [hashSize]int
 	longAsBytes := make([]int8, 8)
 
 	shingles.setInit()
@@ -41,7 +41,7 @@ func ComputeSimHashForString(s string) uint64{
 		longAsBytes[7] = int8(shingle)
 
 		longHash := std64.fp(longAsBytes, 0, 8)
-		for i:=0; i<HashSize; i++ {
+		for i:=0; i<hashSize; i++ {
 			bitSet := ((longHash >> i) & 1) == 1
 			if bitSet {
 				v[i] += 1
@@ -51,7 +51,7 @@ func ComputeSimHashForString(s string) uint64{
 		}
 	}
 	var sim uint64 = 0
-	for i:=0; i<HashSize; i++ {
+	for i:=0; i<hashSize; i++ {
 		if v[i] > 0 {
 			sim |= 1 << i
 		}
